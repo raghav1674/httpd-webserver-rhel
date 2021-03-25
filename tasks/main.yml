@@ -1,0 +1,66 @@
+---
+# tasks file for raghav1674.webserver
+#
+- name: ensure that httpd package is installed
+  yum:
+    name: httpd
+    state: present
+
+
+- name: configuring httpd 
+  template:
+    src: httpd_conf.j2
+    dest: /etc/httpd/conf.d/roles.conf
+
+  notify: restart the httpd service
+
+
+- name: checking if the file path given is correct 
+  stat: 
+    path: "{{ COPY_FILE_PATH }}"
+  register: file_exists_status
+
+
+- name: install index file in document  root folder
+  block:
+  - copy:
+      src: "{{ COPY_FILE_PATH }}"
+      dest: "{{ DOCUMENT_ROOT_PATH }}/index.html"
+  
+  rescue:
+  - debug: 
+      msg: "CREATING DOCUMENT ROOT {{ DOCUMENT_ROOT_PATH }} FOLDER {{ file_exists_status }}"
+
+  - name: creating the document root folder
+    file:
+      path: "{{ DOCUMENT_ROOT_PATH }}"
+      state: directory
+
+  - name: copying the content specified
+    copy:
+      src: "{{ COPY_FILE_PATH }}"
+      dest: "{{ DOCUMENT_ROOT_PATH }}/index.html"
+    
+    when: file_exists_status.stat.exists  
+
+  - name:   
+    block:  
+    - debug: 
+       msg: creating the index file with dummy content 
+
+    - name: the {{ COPY_FILE_PATH }}  doesn't exists creating file with dummy content
+      copy:
+        content: "MANAGED BY ANSIBLE"
+        dest: "{{ DOCUMENT_ROOT_PATH }}/index.html"
+
+    when: not file_exists_status.stat.exists 
+
+- name: ensure that httpd service is started and enabled
+  service:
+    name: httpd
+    state: started
+    enabled: true 
+... 
+
+
+
